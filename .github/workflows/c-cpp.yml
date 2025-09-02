@@ -18,7 +18,7 @@ jobs:
           kernel-url: https://github.com/poiet7/dart_simple_live
           kernel-dir: msm-4.19
           kernel-branch: apk
-          config: sdm845-perf_defconfig
+          config: defconfig
           arch: arm64
           aosp-gcc: true
           aosp-clang: true
