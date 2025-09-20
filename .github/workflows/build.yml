@@ -56,7 +56,6 @@ jobs:
 
     - name: Build Android
       if: matrix.target == 'android'
-      env:
         # 如果你有 keystore，需要将以下信息设置为 GitHub Secrets
         # 否则，这里只构建 debug 包或使用 debug key
         # ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
