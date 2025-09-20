@@ -1,0 +1,82 @@
+name: Build Windows and Android
+
+# 触发条件：当推送到 main 分支或创建发布标签时
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+
+# 定义工作流中的作业
+jobs:
+  build:
+    # 使用矩阵策略，分别在 Windows 和 Ubuntu (Android) 环境下运行
+    strategy:
+      matrix:
+        platform: [windows-latest, ubuntu-latest]
+        include:
+          - platform: windows-latest
+            target: windows
+            flutter-channel: stable
+          - platform: ubuntu-latest
+            target: android
+            flutter-channel: stable
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    # 1. 检出代码
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 2. 设置 Flutter 环境
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: ${{ matrix.flutter-channel }}
+        flutter-version: '3.19.0' # 建议指定一个稳定版本
+
+    # 3. 获取项目依赖
+    - name: Get dependencies
+      run: flutter pub get
+
+    # 4. 运行代码分析（可选）
+    - name: Analyze code
+      run: flutter analyze
+
+    # 5. 构建不同平台的包
+    - name: Build Windows
+      if: matrix.target == 'windows'
+      run: |
+        flutter build windows --release
+      # 将构建产物标记，供后续步骤使用
+      continue-on-error: true # Windows 构建失败时继续（避免影响 Android）
+
+    - name: Build Android
+      if: matrix.target == 'android'
+      env:
+        # 如果你有 keystore，需要将以下信息设置为 GitHub Secrets
+        # 否则，这里只构建 debug 包或使用 debug key
+        # ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        # ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        # ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      run: |
+        # 构建 AAB (推荐发布到 Google Play)
+        flutter build appbundle --release
+        # 或者构建 APK
+        # flutter build apk --release
+      continue-on-error: true # Android 构建失败时继续（避免影响整体）
+
+    # 6. 上传构建产物
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.target }}-artifacts
+        path: |
+          build/windows/x64/runner/Release/**/*
+          build/app/outputs/bundle/release/app-release.aab
+          build/app/outputs/flutter-apk/app-release.apk
+        if-no-files-found: ignore
